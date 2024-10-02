@@ -15,7 +15,7 @@ namespace UpdateCorreios
 									     	cod_cidade,
 									     	cidade,
 									     	bairro,
-									     	rua
+									     	REPLACE(rua,';',',') as rua
 									     FROM (
 									     	SELECT DISTINCT
 									     		L.CEP AS cep,

@@ -1,37 +1,35 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\Thiago\\source\\repos\\atualizador_base_correios\\UpdateCorreios\\UpdateCorreios.csproj": {}
+    "C:\\Users\\dev.tleite\\Desktop\\atualizador_base_correios\\UpdateCorreios\\UpdateCorreios.csproj": {}
   },
   "projects": {
-    "C:\\Users\\Thiago\\source\\repos\\atualizador_base_correios\\UpdateCorreios\\UpdateCorreios.csproj": {
+    "C:\\Users\\dev.tleite\\Desktop\\atualizador_base_correios\\UpdateCorreios\\UpdateCorreios.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\Thiago\\source\\repos\\atualizador_base_correios\\UpdateCorreios\\UpdateCorreios.csproj",
+        "projectUniqueName": "C:\\Users\\dev.tleite\\Desktop\\atualizador_base_correios\\UpdateCorreios\\UpdateCorreios.csproj",
         "projectName": "UpdateCorreios",
-        "projectPath": "C:\\Users\\Thiago\\source\\repos\\atualizador_base_correios\\UpdateCorreios\\UpdateCorreios.csproj",
-        "packagesPath": "C:\\Users\\Thiago\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\Thiago\\source\\repos\\atualizador_base_correios\\UpdateCorreios\\obj\\",
+        "projectPath": "C:\\Users\\dev.tleite\\Desktop\\atualizador_base_correios\\UpdateCorreios\\UpdateCorreios.csproj",
+        "packagesPath": "C:\\Users\\dev.tleite\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\dev.tleite\\Desktop\\atualizador_base_correios\\UpdateCorreios\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
-          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+          "C:\\Program Files\\dotnet\\sdk\\NuGetFallbackFolder"
         ],
         "configFilePaths": [
-          "C:\\Users\\Thiago\\AppData\\Roaming\\NuGet\\NuGet.Config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+          "C:\\Users\\dev.tleite\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
-          "net8.0"
+          "net7.0"
         ],
         "sources": {
           "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-          "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
-          "net8.0": {
-            "targetAlias": "net8.0",
+          "net7.0": {
+            "targetAlias": "net7.0",
             "projectReferences": {}
           }
         },
@@ -39,16 +37,11 @@
           "warnAsError": [
             "NU1605"
           ]
-        },
-        "restoreAuditProperties": {
-          "enableAudit": "true",
-          "auditLevel": "low",
-          "auditMode": "direct"
         }
       },
       "frameworks": {
-        "net8.0": {
-          "targetAlias": "net8.0",
+        "net7.0": {
+          "targetAlias": "net7.0",
           "dependencies": {
             "Microsoft.Data.SqlClient": {
               "target": "Package",
@@ -79,7 +72,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.302/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\7.0.403\\RuntimeIdentifierGraph.json"
         }
       }
     }

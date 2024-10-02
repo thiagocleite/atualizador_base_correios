@@ -7,6 +7,8 @@ using System.IO;
 using Npgsql;
 using VI.Anonimizator;
 using UpdateCorreios;
+using System.Net;
+using System.Text;
 
 class Program
 {
@@ -14,10 +16,11 @@ class Program
     {
         string accessFilePath = @"banco.mdb";
         string tempDb = "correios_base";
-        //string sqlConnectionString = "Data Source=.;Integrated Security=True;TrustServerCertificate=True;";
-        string sqlConnectionString = $"Data Source=.;Initial Catalog={tempDb};Integrated Security=True;TrustServerCertificate=True;";
-        //string csvFilePath = @"resultados.csv";
-        string pgConnectionString = "Host=localhost;Port=5432;Database=postgres;Username=postgres;Password=root;";
+        //string sqlConnectionString = $"Data Source=.;Initial Catalog={tempDb};Integrated Security=True;TrustServerCertificate=True;";
+        string sqlConnectionString = $"Data Source=(localdb)\\MSSQLLocalDB;Initial Catalog={tempDb};Integrated Security=True;TrustServerCertificate=True;";
+        string csvFilePath = @"resultados.csv";
+        //string pgConnectionString = "Host=localhost;Port=5432;Database=postgres;Username=postgres;Password=root;";
+        string pgConnectionString = "Host=dws-hwc-accera-prd-la-south-02-03.dws.myhuaweiclouds.com;Port=8000;Database=dws_vi;Username=ironswan;Password=wzM8dFhQqPKWgDG7ZcamTk;Encoding=UTF8;";
 
 
         List<string> tablesToImport = new List<string> {
@@ -29,9 +32,12 @@ class Program
             "LOG_UNID_OPER"
         };
 
+        //BackupTable(pgConnectionString);
+
         using (var oleDbConnection = new OleDbConnection($@"Provider=Microsoft.ACE.OLEDB.12.0;Data Source={accessFilePath};"))
         {
             oleDbConnection.Open();
+
             using (SqlConnection sqlConnection = new SqlConnection(sqlConnectionString))
             {
                 sqlConnection.Open();
@@ -41,19 +47,22 @@ class Program
 
                 //sqlConnection.ChangeDatabase(tempDb);
 
-                foreach (var table in tablesToImport)
-                {
-                    // Cria a tabela no SQL Server
-                    CreateSqlTableFromAccess(oleDbConnection, sqlConnection, table);
+                //foreach (var table in tablesToImport)
+                //{
+                //    // Cria a tabela no SQL Server
+                //    CreateSqlTableFromAccess(oleDbConnection, sqlConnection, table);
 
-                    // Importa os dados para a tabela SQL
-                    ImportData(oleDbConnection, sqlConnection, table);
-                }
+                //    // Importa os dados para a tabela SQL
+                //    ImportData(oleDbConnection, sqlConnection, table);
+                //}
+                //
 
                 var results = SelectFromView(sqlConnection);
 
+                WriteResultsToCsv(results, csvFilePath);
+
                 // Envia os resultados para o PostgreSQL
-                SendResultsToPostgreSQL(results, pgConnectionString);
+                SendResultsToPostgreSQL(csvFilePath, pgConnectionString);
             }
         }
     }
@@ -130,6 +139,24 @@ class Program
         }
     }
 
+    static void ImportDataToSqlServer(OleDbConnection accessConnection, SqlConnection sqlConnection, string tableName)
+    {
+        string selectQuery = SharedUtils.mainQuery;
+        using (OleDbCommand accessCommand = new OleDbCommand(selectQuery, accessConnection))
+        using (OleDbDataAdapter adapter = new OleDbDataAdapter(accessCommand))
+        {
+            DataTable dataTable = new DataTable();
+            adapter.Fill(dataTable);
+
+            // Insere os dados na tabela SQL
+            using (SqlBulkCopy bulkCopy = new SqlBulkCopy(sqlConnection))
+            {
+                bulkCopy.DestinationTableName = $"[{tableName}]";
+                bulkCopy.WriteToServer(dataTable);
+            }
+        }
+    }
+
     static List<string[]> SelectFromView(SqlConnection sqlConnection)
     {
         var results = new List<string[]>();
@@ -150,7 +177,8 @@ class Program
                         reader["cod_cidade"].ToString(),
                         reader["cidade"].ToString(),
                         reader["bairro"].ToString(),
-                        reader["rua"].ToString()
+                        reader["rua"].ToString(),
+                        string.Empty
                     });
                 }
             }
@@ -160,68 +188,82 @@ class Program
 
     static void WriteResultsToCsv(List<string[]> results, string csvFilePath)
     {
+        var encrypter = new PBKDF2("@ACCERA#INDIRETO$INTEGRATIONS%");
+
         using (StreamWriter writer = new StreamWriter(csvFilePath))
         {
-            // Escreve o cabeçalho
-            writer.WriteLine("cep,pais,uf,cod_cidade,cidade,bairro,rua");
-            // Escreve os resultados
+
+            //writer.WriteLine("codigo,pais,uf,cod_cidade,cidade,bairro,rua");
+
             foreach (var row in results)
             {
-                writer.WriteLine(string.Join(",", row));
+                row[7] = (!string.IsNullOrEmpty(row[6]))?encrypter.GetHashBase64String(row[6]) : row[7];
+
+                var line = string.Join(";", row);
+
+                var tam = line.Split(";").Length;
+                if (tam != 8)
+                {
+                    var teste = "FODEU";
+                }
+
+                writer.WriteLine(line.Replace("\"", ""));
             }
         }
     }
 
-    static void SendResultsToPostgreSQL(List<string[]> results, string pgConnectionString)
+    static void BackupTable(string pgConnectionString)
     {
-        var encrypter = new PBKDF2("@ACCERA#INDIRETO$INTEGRATIONS%");
-
-        string tablePg = "dim_postal";
+        string tablePgBackup = "public.dim_postal_backup";
+        string tablePg = "public.dim_postal";
 
         using (var pgConnection = new NpgsqlConnection(pgConnectionString))
         {
             pgConnection.Open();
 
-            // Cria a tabela se não existir
-            string createTableQuery = @$"
-                        CREATE TABLE IF NOT EXISTS {tablePg} (
-                        cep VARCHAR(20),
-                        pais VARCHAR(3),
-                        uf VARCHAR(2),
-                        cod_cidade VARCHAR(50),
-                        cidade VARCHAR(255),
-                        bairro VARCHAR(255),
-                        rua VARCHAR(255),
-                        rua_hash VARCHAR(255)
-                )";
-
-            using (var createTableCommand = new NpgsqlCommand(createTableQuery, pgConnection))
+            using (var writer = new StreamWriter("backup.csv"))
             {
-                createTableCommand.ExecuteNonQuery();
-            }
-
-            // Truncate a tabela antes de inserir os novos dados
-            using (var truncateCommand = new NpgsqlCommand($"TRUNCATE TABLE {tablePg} RESTART IDENTITY", pgConnection))
-            {
-                truncateCommand.ExecuteNonQuery();
-            }
-
-            // Insere os dados na tabela PostgreSQL
-            using (var insertCommand = new NpgsqlCommand($"INSERT INTO {tablePg} (cep, pais, uf, cod_cidade, cidade, bairro, rua, rua_hash) VALUES (@cep, @pais, @uf, @cod_cidade, @cidade, @bairro, @rua, @rua_hash)", pgConnection))
-            {
-                foreach (var row in results)
+                using (var selectCommand = new NpgsqlCommand($"SELECT codigo, pais, uf, CAST(cod_cidade AS VARCHAR(255)), cidade, bairro, rua, rua_hash FROM {tablePg}", pgConnection))
                 {
-                    insertCommand.Parameters.Clear();
-                    insertCommand.Parameters.AddWithValue("@cep", row[0]);
-                    insertCommand.Parameters.AddWithValue("@pais", row[1]);
-                    insertCommand.Parameters.AddWithValue("@uf", row[2]);
-                    insertCommand.Parameters.AddWithValue("@cod_cidade", row[3]);
-                    insertCommand.Parameters.AddWithValue("@cidade", row[4]);
-                    insertCommand.Parameters.AddWithValue("@bairro", row[5]);
-                    insertCommand.Parameters.AddWithValue("@rua", row[6]);
-                    insertCommand.Parameters.AddWithValue("@rua_hash", encrypter.GetHashBase64String(row[6]));
+                    using (NpgsqlDataReader reader = selectCommand.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            var line = $"{reader["codigo"]};{reader["pais"]};{reader["uf"]};{reader["cod_cidade"]};{reader["cidade"]};{reader["bairro"]};{reader["rua"]};{reader["rua_hash"]}";
+                            writer.WriteLine(line.Replace("\"","\"\""));
+                        }
+                    }
+                }
+            }
 
-                    insertCommand.ExecuteNonQuery();
+            using (var writer = pgConnection.BeginTextImport($"COPY {tablePgBackup} (codigo, pais, uf, cod_cidade, cidade, bairro, rua, rua_hash) FROM STDIN WITH CSV delimiter ';'"))
+            {
+                using (var reader = new StreamReader("backup.csv"))
+                {
+                    writer.Write(reader.ReadToEnd());
+                }
+            }
+        }
+    }
+
+    static void SendResultsToPostgreSQL(string csv,string pgConnectionString)
+    {
+        string tablePg = "public.dim_postal";
+
+        using (var pgConnection = new NpgsqlConnection(pgConnectionString))
+        {
+            pgConnection.Open();
+
+            using (var cmd = new NpgsqlCommand($"TRUNCATE TABLE {tablePg}",pgConnection))
+            {
+                cmd.ExecuteNonQuery();
+            }
+
+            using (var writer = pgConnection.BeginTextImport($"COPY {tablePg} (codigo, pais, uf, cod_cidade, cidade, bairro, rua, rua_hash) FROM STDIN WITH CSV delimiter ';'"))
+            {
+                using (var reader = new StreamReader(csv))
+                {
+                    writer.Write(reader.ReadToEnd());
                 }
             }
         }
